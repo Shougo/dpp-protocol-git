@@ -1,11 +1,11 @@
-import { Denops, vars } from "../dpp/deps.ts";
+import { Denops, vars } from "https://deno.land/x/dpp_vim@v0.0.3/deps.ts";
 import {
   BaseProtocol,
   Command,
   Plugin,
   ProtocolOptions,
-} from "../dpp/types.ts";
-import { isDirectory } from "../dpp/utils.ts";
+} from "https://deno.land/x/dpp_vim@v0.0.3/types.ts";
+import { isDirectory } from "https://deno.land/x/dpp_vim@v0.0.3/utils.ts";
 
 type Params = {
   cloneDepth: number;
