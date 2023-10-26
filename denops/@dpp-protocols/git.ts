@@ -5,7 +5,7 @@ import {
   Plugin,
   ProtocolOptions,
 } from "https://deno.land/x/dpp_vim@v0.0.6/types.ts";
-import { isDirectory } from "https://deno.land/x/dpp_vim@v0.0.6/utils.ts";
+import { isDirectory, safeStat } from "https://deno.land/x/dpp_vim@v0.0.6/utils.ts";
 
 type Params = {
   cloneDepth: number;
@@ -207,6 +207,35 @@ export class Protocol extends BaseProtocol<Params> {
     }];
   }
 
+  override async getRevision(args: {
+    denops: Denops;
+    plugin: Plugin;
+  }): Promise<string> {
+    if (!args.plugin.repo || !args.plugin.path) {
+      return "";
+    }
+
+    const gitDir = await getGitDir(args.plugin.path);
+    if (gitDir.length === 0) {
+      return "";
+    }
+    const headFileLine = (await Deno.readTextFile(`${gitDir}/HEAD`)).split("\n")[0];
+
+    if (headFileLine.startsWith("ref: ")) {
+      const ref = headFileLine.slice(5);
+      if (await safeStat(`${gitDir}/${ref}`)) {
+        return (await Deno.readTextFile(`${gitDir}/${ref}`)).split("\n")[0];
+      }
+
+      for (const line of (await Deno.readTextFile(`${gitDir}/packed-refs`)).split("\n").filter(
+        (line) => line.includes(` ${ref}`))) {
+          return line.replace(/^([0-9a-f]*) /, "$1");
+      }
+    }
+
+    return headFileLine;
+  }
+
   override params(): Params {
     return {
       cloneDepth: 0,
@@ -217,4 +246,9 @@ export class Protocol extends BaseProtocol<Params> {
       pullArgs: ["pull", "--ff", "--ff-only"],
     };
   }
+}
+
+async function getGitDir(base: string): Promise<string> {
+  // TODO: parse "." file
+  return await isDirectory(`${base}/.git`) ? `${base}/.git` : "";
 }
