@@ -1,11 +1,11 @@
-import { Denops, vars } from "https://deno.land/x/dpp_vim@v0.0.3/deps.ts";
+import { Denops, vars } from "https://deno.land/x/dpp_vim@v0.0.6/deps.ts";
 import {
   BaseProtocol,
   Command,
   Plugin,
   ProtocolOptions,
-} from "https://deno.land/x/dpp_vim@v0.0.3/types.ts";
-import { isDirectory } from "https://deno.land/x/dpp_vim@v0.0.3/utils.ts";
+} from "https://deno.land/x/dpp_vim@v0.0.6/types.ts";
+import { isDirectory } from "https://deno.land/x/dpp_vim@v0.0.6/utils.ts";
 
 type Params = {
   cloneDepth: number;
@@ -184,6 +184,27 @@ export class Protocol extends BaseProtocol<Params> {
         args: commandArgs,
       }];
     }
+  }
+
+  override async getDiffCommands(args: {
+    denops: Denops;
+    plugin: Plugin;
+    protocolParams: Params;
+    oldRev: string;
+    newRev: string;
+  }): Promise<Command[]> {
+    if (!args.plugin.repo || !args.plugin.path) {
+      return [];
+    }
+
+    return [{
+      command: args.protocolParams.commandPath,
+      args: [
+        "diff",
+        `${args.oldRev}..${args.newRev}`,
+        "--", "doc", "README", "README.md",
+      ],
+    }];
   }
 
   override params(): Params {
