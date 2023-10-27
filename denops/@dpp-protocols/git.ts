@@ -1,11 +1,14 @@
-import { Denops, vars } from "https://deno.land/x/dpp_vim@v0.0.6/deps.ts";
+import { Denops, vars } from "https://deno.land/x/dpp_vim@v0.0.7/deps.ts";
 import {
   BaseProtocol,
   Command,
   Plugin,
   ProtocolOptions,
-} from "https://deno.land/x/dpp_vim@v0.0.6/types.ts";
-import { isDirectory, safeStat } from "https://deno.land/x/dpp_vim@v0.0.6/utils.ts";
+} from "https://deno.land/x/dpp_vim@v0.0.7/types.ts";
+import {
+  isDirectory,
+  safeStat,
+} from "https://deno.land/x/dpp_vim@v0.0.7/utils.ts";
 
 type Params = {
   cloneDepth: number;
@@ -190,8 +193,8 @@ export class Protocol extends BaseProtocol<Params> {
     denops: Denops;
     plugin: Plugin;
     protocolParams: Params;
-    oldRev: string;
     newRev: string;
+    oldRev: string;
   }): Promise<Command[]> {
     if (!args.plugin.repo || !args.plugin.path) {
       return [];
@@ -202,7 +205,57 @@ export class Protocol extends BaseProtocol<Params> {
       args: [
         "diff",
         `${args.oldRev}..${args.newRev}`,
-        "--", "doc", "README", "README.md",
+        "--",
+        "doc",
+        "README",
+        "README.md",
+      ],
+    }];
+  }
+
+  override async getLogCommands(args: {
+    denops: Denops;
+    plugin: Plugin;
+    protocolParams: Params;
+    newRev: string;
+    oldRev: string;
+  }): Promise<Command[]> {
+    if (
+      !args.plugin.repo || !args.plugin.path || args.newRev.length === 0 ||
+      args.oldRev.length === 0
+    ) {
+      return [];
+    }
+
+    // NOTE: If the oldRev is not the ancestor of two branches. Then do not use
+    // %s^.  use %s^ will show one commit message which already shown last
+    // time.
+    const proc = new Deno.Command(
+      args.protocolParams.commandPath,
+      {
+        args: [
+          "merge-base",
+          args.oldRev,
+          args.newRev,
+        ],
+        cwd: await isDirectory(args.plugin.path ?? "")
+          ? args.plugin.path
+          : Deno.cwd(),
+        stdout: "piped",
+        stderr: "piped",
+      },
+    );
+    const { stdout } = await proc.output();
+
+    const isNotAncestor = new TextDecoder().decode(stdout) === args.oldRev;
+    return [{
+      command: args.protocolParams.commandPath,
+      args: [
+        "log",
+        `${args.oldRev}${isNotAncestor ? "" : "^"}..${args.newRev}`,
+        "--graph",
+        "--no-show-signature",
+        '--pretty=format:"%h [%cr] %s"',
       ],
     }];
   }
@@ -219,7 +272,8 @@ export class Protocol extends BaseProtocol<Params> {
     if (gitDir.length === 0) {
       return "";
     }
-    const headFileLine = (await Deno.readTextFile(`${gitDir}/HEAD`)).split("\n")[0];
+    const headFileLine =
+      (await Deno.readTextFile(`${gitDir}/HEAD`)).split("\n")[0];
 
     if (headFileLine.startsWith("ref: ")) {
       const ref = headFileLine.slice(5);
@@ -227,9 +281,14 @@ export class Protocol extends BaseProtocol<Params> {
         return (await Deno.readTextFile(`${gitDir}/${ref}`)).split("\n")[0];
       }
 
-      for (const line of (await Deno.readTextFile(`${gitDir}/packed-refs`)).split("\n").filter(
-        (line) => line.includes(` ${ref}`))) {
-          return line.replace(/^([0-9a-f]*) /, "$1");
+      for (
+        const line of (await Deno.readTextFile(`${gitDir}/packed-refs`)).split(
+          "\n",
+        ).filter(
+          (line) => line.includes(` ${ref}`),
+        )
+      ) {
+        return line.replace(/^([0-9a-f]*) /, "$1");
       }
     }
 
