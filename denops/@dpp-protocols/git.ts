@@ -189,6 +189,26 @@ export class Protocol extends BaseProtocol<Params> {
     }
   }
 
+  override async getRollbackCommands(args: {
+    denops: Denops;
+    plugin: Plugin;
+    protocolParams: Params;
+    rev: string;
+  }): Promise<Command[]> {
+    if (!args.plugin.repo || !args.plugin.path) {
+      return [];
+    }
+
+    return [{
+      command: args.protocolParams.commandPath,
+      args: [
+        "reset",
+        "--hard",
+        args.rev,
+      ],
+    }];
+  }
+
   override async getDiffCommands(args: {
     denops: Denops;
     plugin: Plugin;
