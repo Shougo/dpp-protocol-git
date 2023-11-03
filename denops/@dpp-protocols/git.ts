@@ -129,6 +129,8 @@ export class Protocol extends BaseProtocol<Params> {
       return [];
     }
 
+    const depth = args.protocolParams.cloneDepth;
+
     if (await isDirectory(args.plugin.path)) {
       const fetchArgs = [
         "-c",
@@ -150,26 +152,39 @@ export class Protocol extends BaseProtocol<Params> {
         "--recursive",
       ];
 
-      // TODO: depth support
+      const commands = [];
 
-      return [
+      commands.push(
         {
           command: args.protocolParams.commandPath,
           args: fetchArgs,
         },
-        {
-          command: args.protocolParams.commandPath,
-          args: remoteArgs,
-        },
+      );
+
+      if (!depth && depth <= 0) {
+        commands.push(
+          {
+            command: args.protocolParams.commandPath,
+            args: remoteArgs,
+          },
+        );
+      }
+
+      commands.push(
         {
           command: args.protocolParams.commandPath,
           args: args.protocolParams.pullArgs,
         },
+      );
+
+      commands.push(
         {
           command: args.protocolParams.commandPath,
           args: submoduleArgs,
         },
-      ];
+      );
+
+      return commands;
     } else {
       const commandArgs = [
         "-c",
@@ -182,7 +197,14 @@ export class Protocol extends BaseProtocol<Params> {
         commandArgs.push("--filter=blob:none");
       }
 
-      // TODO: depth support
+      if (depth && depth > 0) {
+        commandArgs.push(`--depth=${depth}`);
+
+        if (args.plugin.rev && args.plugin.rev.length > 0) {
+          commandArgs.push("--branch");
+          commandArgs.push(args.plugin.rev);
+        }
+      }
 
       commandArgs.push(await this.getUrl(args));
       commandArgs.push(args.plugin.path);
