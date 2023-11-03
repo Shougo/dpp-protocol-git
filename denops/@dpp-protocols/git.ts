@@ -46,6 +46,7 @@ export class Protocol extends BaseProtocol<Params> {
     if (await isDirectory(path)) {
       // Local repository
       return {
+        frozen: true,
         local: true,
         path,
       };
