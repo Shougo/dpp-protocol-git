@@ -39,11 +39,15 @@ export class Protocol extends BaseProtocol<Params> {
       return;
     }
 
-    if (await isDirectory(args.plugin.repo)) {
+    const path = await args.denops.call(
+      "dpp#util#_expand",
+      args.plugin.repo,
+    ) as string;
+    if (await isDirectory(path)) {
       // Local repository
       return {
         local: true,
-        path: args.plugin.repo,
+        path,
       };
     }
 
