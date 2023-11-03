@@ -194,12 +194,12 @@ export class Protocol extends BaseProtocol<Params> {
     }
   }
 
-  override async getRollbackCommands(args: {
+  override getRollbackCommands(args: {
     denops: Denops;
     plugin: Plugin;
     protocolParams: Params;
     rev: string;
-  }): Promise<Command[]> {
+  }): Command[] {
     if (!args.plugin.repo || !args.plugin.path) {
       return [];
     }
@@ -214,13 +214,13 @@ export class Protocol extends BaseProtocol<Params> {
     }];
   }
 
-  override async getDiffCommands(args: {
+  override getDiffCommands(args: {
     denops: Denops;
     plugin: Plugin;
     protocolParams: Params;
     newRev: string;
     oldRev: string;
-  }): Promise<Command[]> {
+  }): Command[] {
     if (!args.plugin.repo || !args.plugin.path) {
       return [];
     }
@@ -281,6 +281,82 @@ export class Protocol extends BaseProtocol<Params> {
         "--graph",
         "--no-show-signature",
         '--pretty=format:"%h [%cr] %s"',
+      ],
+    }];
+  }
+
+  override async getRevisionLockCommands(args: {
+    denops: Denops;
+    plugin: Plugin;
+    protocolParams: Params;
+  }): Promise<Command[]> {
+    if (!args.plugin.repo || !args.plugin.path) {
+      return [];
+    }
+
+    let rev = args.plugin.rev ?? "";
+
+    if (rev && rev.match(/\*/)) {
+      // Use the released tag (git 1.9.2 or above required)
+      const proc = new Deno.Command(
+        args.protocolParams.commandPath,
+        {
+          args: [
+            "tag",
+            rev,
+            "--list",
+            "--sort",
+            "-version:refname",
+          ],
+          cwd: await isDirectory(args.plugin.path ?? "")
+            ? args.plugin.path
+            : Deno.cwd(),
+          stdout: "piped",
+          stderr: "piped",
+        },
+      );
+      const { stdout } = await proc.output();
+
+      const lines = new TextDecoder().decode(stdout).split("\n");
+      rev = lines.length > 0 ? lines[0] : "";
+    }
+
+    if (rev.length === 0) {
+      // Fix detach HEAD.
+      // Use symbolic-ref feature (git 1.8.7 or above required)
+      const proc = new Deno.Command(
+        args.protocolParams.commandPath,
+        {
+          args: [
+            "symbolic-ref",
+            "--short",
+            "HEAD",
+          ],
+          cwd: await isDirectory(args.plugin.path ?? "")
+            ? args.plugin.path
+            : Deno.cwd(),
+          stdout: "piped",
+          stderr: "piped",
+        },
+      );
+      const { stdout } = await proc.output();
+
+      const lines = new TextDecoder().decode(stdout).split("\n");
+      rev = lines.length > 0 ? lines[0] : "";
+
+      if (rev.match(/fatal: /)) {
+        // Fix "fatal: ref HEAD is not a symbolic ref" error
+        // NOTE: Should specify the default branch?
+        rev = "main";
+      }
+    }
+
+    return [{
+      command: args.protocolParams.commandPath,
+      args: [
+        "checkout",
+        rev,
+        "--",
       ],
     }];
   }
