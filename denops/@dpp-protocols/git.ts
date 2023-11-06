@@ -9,6 +9,7 @@ import {
   isDirectory,
   safeStat,
 } from "https://deno.land/x/dpp_vim@v0.0.7/utils.ts";
+import { isAbsolute } from "https://deno.land/std@0.205.0/path/mod.ts";
 
 type Params = {
   cloneDepth: number;
@@ -39,17 +40,25 @@ export class Protocol extends BaseProtocol<Params> {
       return;
     }
 
-    const path = await args.denops.call(
-      "dpp#util#_expand",
-      args.plugin.repo,
-    ) as string;
-    if (await isDirectory(path)) {
-      // Local repository
-      return {
-        frozen: true,
-        local: true,
-        path,
-      };
+    if (isAbsolute(args.plugin.repo) || args.plugin.repo.match(/^~/)) {
+      if (args.plugin.local) {
+        // Already local
+        return;
+      }
+
+      const path = await args.denops.call(
+        "dpp#util#_expand",
+        args.plugin.repo,
+      ) as string;
+
+      if (await isDirectory(path)) {
+        // Local repository
+        return {
+          frozen: true,
+          local: true,
+          path,
+        };
+      }
     }
 
     const url = await this.getUrl(args);
@@ -76,11 +85,6 @@ export class Protocol extends BaseProtocol<Params> {
   }): Promise<string> {
     if (!args.plugin.repo || !args.plugin.repo.match(/\//)) {
       return "";
-    }
-
-    if (await isDirectory(args.plugin.repo)) {
-      // Local repository
-      return args.plugin.repo;
     }
 
     let protocol = args.protocolParams.defaultProtocol;
