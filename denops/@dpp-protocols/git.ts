@@ -93,7 +93,7 @@ export class Protocol extends BaseProtocol<Params> {
 
     const sshMatch = args.plugin.repo.match(/^git@(?<host>[^:]+):(?<name>.+)/);
     const protocolMatch = args.plugin.repo.match(
-      /^(?<protocol>[^:]+):(?<host>[^\/]+)\/(?<name>.+)/,
+      /^(?<protocol>[^:]+):\/\/(?<host>[^\/]+)\/(?<name>.+)/,
     );
     if (sshMatch && sshMatch.groups) {
       // Parse "git@host:name" pattern
