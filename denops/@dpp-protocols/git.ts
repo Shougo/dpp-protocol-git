@@ -14,10 +14,17 @@ import { isAbsolute } from "https://deno.land/std@0.206.0/path/mod.ts";
 type Params = {
   cloneDepth: number;
   commandPath: string;
+  defaultBranch: string;
   defaultHubSite: string;
   defaultProtocol: string;
+  defaultRemote: string;
   partialClone: boolean;
   pullArgs: string[];
+};
+
+type GitPlugin = Plugin & {
+  __gitDefaultBranch?: string;
+  __gitRemote?: string;
 };
 
 export class Protocol extends BaseProtocol<Params> {
@@ -125,7 +132,7 @@ export class Protocol extends BaseProtocol<Params> {
 
   override async getSyncCommands(args: {
     denops: Denops;
-    plugin: Plugin;
+    plugin: GitPlugin;
     protocolOptions: ProtocolOptions;
     protocolParams: Params;
   }): Promise<Command[]> {
@@ -145,7 +152,7 @@ export class Protocol extends BaseProtocol<Params> {
       const remoteArgs = [
         "remote",
         "set-head",
-        "origin",
+        args.plugin.__gitRemote ?? args.protocolParams.defaultRemote,
         "-a",
       ];
 
@@ -313,7 +320,7 @@ export class Protocol extends BaseProtocol<Params> {
 
   override async getRevisionLockCommands(args: {
     denops: Denops;
-    plugin: Plugin;
+    plugin: GitPlugin;
     protocolParams: Params;
   }): Promise<Command[]> {
     if (!args.plugin.repo || !args.plugin.path) {
@@ -372,8 +379,8 @@ export class Protocol extends BaseProtocol<Params> {
 
       if (rev.match(/fatal: /)) {
         // Fix "fatal: ref HEAD is not a symbolic ref" error
-        // NOTE: Should specify the default branch?
-        rev = "main";
+        rev = args.plugin.__gitDefaultBranch ??
+          args.protocolParams.defaultBranch;
       }
     }
 
@@ -426,8 +433,10 @@ export class Protocol extends BaseProtocol<Params> {
     return {
       cloneDepth: 0,
       commandPath: "git",
+      defaultBranch: "main",
       defaultHubSite: "github.com",
       defaultProtocol: "https",
+      defaultRemote: "origin",
       partialClone: false,
       pullArgs: ["pull", "--ff", "--ff-only"],
     };

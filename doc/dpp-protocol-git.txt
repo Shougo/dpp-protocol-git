@@ -50,6 +50,12 @@ commandPath
 
 		Default: "git"
 
+                                        *dpp-protocol-git-param-defaultBranch*
+defaultBranch
+		The default branch for git type.
+
+		Default: "main"
+
                                        *dpp-protocol-git-param-defaultHubSite*
 defaultHubSite
 		The default hub site used for git type.
@@ -62,6 +68,12 @@ defaultProtocol
 		NOTE: It only accepts "https" or "ssh".
 
 		Default: "https"
+
+                                        *dpp-protocol-git-param-defaultRemote*
+defaultRemote
+		The default remote for git type.
+
+		Default: "origin"
 
                                    *dpp-protocol-git-param-enablePartialClone*
 enablePartialClone
