@@ -75,6 +75,12 @@ defaultRemote
 
 		Default: "origin"
 
+                               *dpp-protocol-git-param-enableCredentialHelper*
+enableCredentialHelper
+		Enable git credential helper.
+
+		Default: false
+
                                    *dpp-protocol-git-param-enablePartialClone*
 enablePartialClone
 		Enable partial clone when plugin install. It is faster.

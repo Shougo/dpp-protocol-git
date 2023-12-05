@@ -1,15 +1,15 @@
-import { Denops, vars } from "https://deno.land/x/dpp_vim@v0.0.7/deps.ts";
+import { Denops, vars } from "https://deno.land/x/dpp_vim@v0.0.8/deps.ts";
 import {
   BaseProtocol,
   Command,
   Plugin,
   ProtocolOptions,
-} from "https://deno.land/x/dpp_vim@v0.0.7/types.ts";
+} from "https://deno.land/x/dpp_vim@v0.0.8/types.ts";
 import {
   isDirectory,
   safeStat,
-} from "https://deno.land/x/dpp_vim@v0.0.7/utils.ts";
-import { isAbsolute } from "https://deno.land/std@0.206.0/path/mod.ts";
+} from "https://deno.land/x/dpp_vim@v0.0.8/utils.ts";
+import { isAbsolute } from "https://deno.land/std@0.208.0/path/mod.ts";
 
 type Params = {
   cloneDepth: number;
@@ -18,7 +18,8 @@ type Params = {
   defaultHubSite: string;
   defaultProtocol: string;
   defaultRemote: string;
-  partialClone: boolean;
+  enableCredentialHelper: boolean;
+  enablePartialClone: boolean;
   pullArgs: string[];
 };
 
@@ -144,10 +145,13 @@ export class Protocol extends BaseProtocol<Params> {
 
     if (await isDirectory(args.plugin.path)) {
       const fetchArgs = [
-        "-c",
-        "credential.helper=",
         "fetch",
       ];
+
+      if (!args.protocolParams.enableCredentialHelper) {
+        fetchArgs.push("--config");
+        fetchArgs.push("credential.helper=");
+      }
 
       const remoteArgs = [
         "remote",
@@ -198,13 +202,20 @@ export class Protocol extends BaseProtocol<Params> {
       return commands;
     } else {
       const commandArgs = [
-        "-c",
-        "credential.helper=",
         "clone",
         "--recursive",
       ];
 
-      if (args.protocolParams.partialClone) {
+      if (!args.protocolParams.enableCredentialHelper) {
+        commandArgs.push("--config");
+        commandArgs.push("credential.helper=");
+      }
+
+      if (args.protocolParams.enablePartialClone) {
+        commandArgs.push("--filter=blob:none");
+      }
+
+      if (args.protocolParams.enablePartialClone) {
         commandArgs.push("--filter=blob:none");
       }
 
@@ -437,7 +448,8 @@ export class Protocol extends BaseProtocol<Params> {
       defaultHubSite: "github.com",
       defaultProtocol: "https",
       defaultRemote: "origin",
-      partialClone: false,
+      enableCredentialHelper: false,
+      enablePartialClone: false,
       pullArgs: ["pull", "--ff", "--ff-only"],
     };
   }
