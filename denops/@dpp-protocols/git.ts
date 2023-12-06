@@ -142,16 +142,14 @@ export class Protocol extends BaseProtocol<Params> {
     }
 
     const depth = args.protocolParams.cloneDepth;
+    const credentialHelper = args.protocolParams.enableCredentialHelper ? [] : [
+      "-c", "credential.helper=",
+    ];
 
     if (await isDirectory(args.plugin.path)) {
-      const fetchArgs = [
+      const fetchArgs = credentialHelper.concat([
         "fetch",
-      ];
-
-      if (!args.protocolParams.enableCredentialHelper) {
-        fetchArgs.push("--config");
-        fetchArgs.push("credential.helper=");
-      }
+      ]);
 
       const remoteArgs = [
         "remote",
@@ -201,15 +199,13 @@ export class Protocol extends BaseProtocol<Params> {
 
       return commands;
     } else {
-      const commandArgs = [
+      const commandArgs = credentialHelper.concat([
         "clone",
         "--recursive",
-      ];
+      ]);
 
-      if (!args.protocolParams.enableCredentialHelper) {
-        commandArgs.push("--config");
-        commandArgs.push("credential.helper=");
-      }
+      commandArgs.push("clone");
+      commandArgs.push("--recursive");
 
       if (args.protocolParams.enablePartialClone) {
         commandArgs.push("--filter=blob:none");
