@@ -204,9 +204,6 @@ export class Protocol extends BaseProtocol<Params> {
         "--recursive",
       ]);
 
-      commandArgs.push("clone");
-      commandArgs.push("--recursive");
-
       if (args.protocolParams.enablePartialClone) {
         commandArgs.push("--filter=blob:none");
       }
