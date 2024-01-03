@@ -208,10 +208,6 @@ export class Protocol extends BaseProtocol<Params> {
         commandArgs.push("--filter=blob:none");
       }
 
-      if (args.protocolParams.enablePartialClone) {
-        commandArgs.push("--filter=blob:none");
-      }
-
       if (depth && depth > 0) {
         commandArgs.push(`--depth=${depth}`);
 
