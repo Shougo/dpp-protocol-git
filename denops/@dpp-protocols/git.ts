@@ -1,15 +1,16 @@
-import { Denops, vars } from "https://deno.land/x/dpp_vim@v0.0.8/deps.ts";
+import { Denops, vars } from "https://deno.land/x/dpp_vim@v0.2.0/deps.ts";
 import {
   BaseProtocol,
   Command,
   Plugin,
   ProtocolOptions,
-} from "https://deno.land/x/dpp_vim@v0.0.8/types.ts";
+} from "https://deno.land/x/dpp_vim@v0.2.0/types.ts";
 import {
   isDirectory,
+  printError,
   safeStat,
-} from "https://deno.land/x/dpp_vim@v0.0.8/utils.ts";
-import { isAbsolute } from "https://deno.land/std@0.208.0/path/mod.ts";
+} from "https://deno.land/x/dpp_vim@v0.2.0/utils.ts";
+import { isAbsolute } from "https://deno.land/std@0.223.0/path/mod.ts";
 
 type Params = {
   cloneDepth: number;
@@ -116,8 +117,8 @@ export class Protocol extends BaseProtocol<Params> {
     }
 
     if (protocol !== "https" && protocol !== "ssh") {
-      await args.denops.call(
-        "dpp#util#_error",
+      await printError(
+        args.denops,
         `Invalid git protocol: "${protocol}"`,
       );
 
