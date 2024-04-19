@@ -3,7 +3,7 @@
 Author: Shougo <Shougo.Matsu at gmail.com>
 License: MIT license
 
-CONTENTS                                          *dpp-protocol-git-contents*
+CONTENTS                                           *dpp-protocol-git-contents*
 
 Introduction		|dpp-protocol-git-introduction|
 Install			|dpp-protocol-git-install|
@@ -16,6 +16,19 @@ Compatibility		|dpp-protocol-git-compatibility|
 INTRODUCTION                                   *dpp-protocol-git-introduction*
 
 This protocol implements git operations.
+
+It converts URL in |dpp-plugin-option-repo|.
+
+Example:
+
+	"Shougo/dpp.vim" ->
+	"{defaultProtocol}://{defaultHubSite}/Shougo/dpp.vim.git"
+
+	"gitlab.com/user/name" ->
+	"{defaultProtocol}://gitlab.com/user/name.git"
+
+	"https://gitlab.com/user/name" ->
+	"https://gitlab.com/user/name.git"
 
 
 ==============================================================================
@@ -58,7 +71,7 @@ defaultBranch
 
                                        *dpp-protocol-git-param-defaultHubSite*
 defaultHubSite
-		The default hub site used for git type.
+		The default hub site url used for git type.
 
 		Default: "github.com"
 
@@ -88,7 +101,7 @@ enablePartialClone
 
 		Default: false
 
-                                          *dpp-protocol-git-param-pullArgs*
+                                             *dpp-protocol-git-param-pullArgs*
 pullArgs
 		The git command args used to pull updates.
 

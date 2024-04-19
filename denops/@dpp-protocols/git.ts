@@ -1,4 +1,8 @@
-import { Denops, vars } from "https://deno.land/x/dpp_vim@v0.2.0/deps.ts";
+import {
+  assertEquals,
+  Denops,
+  vars,
+} from "https://deno.land/x/dpp_vim@v0.2.0/deps.ts";
 import {
   BaseProtocol,
   Command,
@@ -7,7 +11,6 @@ import {
 } from "https://deno.land/x/dpp_vim@v0.2.0/types.ts";
 import {
   isDirectory,
-  printError,
   safeStat,
 } from "https://deno.land/x/dpp_vim@v0.2.0/utils.ts";
 import { isAbsolute } from "https://deno.land/std@0.223.0/path/mod.ts";
@@ -70,7 +73,7 @@ export class Protocol extends BaseProtocol<Params> {
       }
     }
 
-    const url = await this.getUrl(args);
+    const url = this.getUrl(args);
     if (url.length === 0) {
       return;
     }
@@ -86,50 +89,17 @@ export class Protocol extends BaseProtocol<Params> {
     };
   }
 
-  override async getUrl(args: {
+  override getUrl(args: {
     denops: Denops;
     plugin: Plugin;
     protocolOptions: ProtocolOptions;
     protocolParams: Params;
-  }): Promise<string> {
-    if (!args.plugin.repo || !args.plugin.repo.match(/\//)) {
-      return "";
-    }
-
-    let protocol = args.protocolParams.defaultProtocol;
-    let host = args.protocolParams.defaultHubSite;
-    let name = args.plugin.repo;
-
-    const sshMatch = args.plugin.repo.match(/^git@(?<host>[^:]+):(?<name>.+)/);
-    const protocolMatch = args.plugin.repo.match(
-      /^(?<protocol>[^:]+):\/\/(?<host>[^\/]+)\/(?<name>.+)/,
+  }): string {
+    return getGitUrl(
+      args.plugin,
+      args.protocolParams.defaultHubSite,
+      args.protocolParams.defaultProtocol,
     );
-    if (sshMatch && sshMatch.groups) {
-      // Parse "git@host:name" pattern
-      protocol = "ssh";
-      host = sshMatch.groups.host;
-      name = sshMatch.groups.name;
-    } else if (protocolMatch && protocolMatch.groups) {
-      // Parse "protocol://host/name" pattern
-      protocol = protocolMatch.groups.protocol;
-      host = protocolMatch.groups.host;
-      name = protocolMatch.groups.name;
-    }
-
-    if (protocol !== "https" && protocol !== "ssh") {
-      await printError(
-        args.denops,
-        `Invalid git protocol: "${protocol}"`,
-      );
-
-      return "";
-    }
-
-    const url = (protocol === "ssh")
-      ? `git@${host}:${name}`
-      : `${protocol}://${host}/${name}`;
-
-    return url;
   }
 
   override async getSyncCommands(args: {
@@ -144,7 +114,8 @@ export class Protocol extends BaseProtocol<Params> {
 
     const depth = args.protocolParams.cloneDepth;
     const credentialHelper = args.protocolParams.enableCredentialHelper ? [] : [
-      "-c", "credential.helper=",
+      "-c",
+      "credential.helper=",
     ];
 
     if (await isDirectory(args.plugin.path)) {
@@ -218,7 +189,7 @@ export class Protocol extends BaseProtocol<Params> {
         }
       }
 
-      commandArgs.push(await this.getUrl(args));
+      commandArgs.push(this.getUrl(args));
       commandArgs.push(args.plugin.path);
 
       return [{
@@ -445,7 +416,142 @@ export class Protocol extends BaseProtocol<Params> {
   }
 }
 
+function getGitUrl(
+  plugin: Plugin,
+  defaultHubSite: string,
+  defaultProtocol: string,
+): string {
+  if (!plugin.repo || !plugin.repo.match(/\//)) {
+    return "";
+  }
+
+  let protocol = defaultProtocol;
+  let host = defaultHubSite;
+  let user = "";
+  let name = "";
+
+  const sshMatch = plugin.repo.match(
+    /^git@(?<host>[^:]+):(?<user>[^\/]+)\/(?<name>.+)/
+  );
+  const protocolMatch = plugin.repo.match(
+    /^(?<protocol>[^:]+):\/\/(?<host>[^\/]+)\/(?<user>[^\/]+)\/(?<name>.+)/,
+  );
+  const hostMatch = plugin.repo.match(
+    /^((?<host>[^\/]+)\/)?(?<user>[^\/]+)\/(?<name>.+)/,
+  );
+  if (sshMatch && sshMatch.groups) {
+    // Parse "git@host:user/name" pattern
+    protocol = "ssh";
+    host = sshMatch.groups.host;
+    user = sshMatch.groups.user;
+    name = sshMatch.groups.name;
+  } else if (protocolMatch && protocolMatch.groups) {
+    // Parse "protocol://host/user/name" pattern
+    protocol = protocolMatch.groups.protocol;
+    host = protocolMatch.groups.host;
+    user = protocolMatch.groups.user;
+    name = protocolMatch.groups.name;
+  } else if (hostMatch && hostMatch.groups) {
+    // Parse "host/user/name" pattern
+    if (hostMatch.groups.host) {
+      host = hostMatch.groups.host;
+    }
+    user = hostMatch.groups.user;
+    name = hostMatch.groups.name;
+  }
+
+  if (user === "" || name === "") {
+    // Invalid
+    return "";
+  }
+
+  if (protocol !== "https" && protocol !== "ssh") {
+    // Invalid protocol
+    return "";
+  }
+
+  const url = (protocol === "ssh")
+    ? `git@${host}:${user}/${name}`
+    : `${protocol}://${host}/${user}/${name}`;
+
+  return url.endsWith(".git") ? url : url + ".git";
+}
+
 async function getGitDir(base: string): Promise<string> {
   // TODO: parse "." file
   return await isDirectory(`${base}/.git`) ? `${base}/.git` : "";
 }
+
+Deno.test("getGitUrl", () => {
+  assertEquals(
+    getGitUrl(
+      {
+        name: "dpp.vim",
+        repo: "Shougo/dpp.vim",
+      },
+      "github.com",
+      "https",
+    ),
+    "https://github.com/Shougo/dpp.vim.git",
+  );
+
+  assertEquals(
+    getGitUrl(
+      {
+        name: "repo",
+        repo: "gitlab.com/user/repo",
+      },
+      "github.com",
+      "https",
+    ),
+    "https://gitlab.com/user/repo.git",
+  );
+
+  assertEquals(
+    getGitUrl(
+      {
+        name: "repo",
+        repo: "https://gitlab.com/user/repo",
+      },
+      "github.com",
+      "https",
+    ),
+    "https://gitlab.com/user/repo.git",
+  );
+
+  assertEquals(
+    getGitUrl(
+      {
+        name: "repo",
+        repo: "foo://gitlab.com/user/repo",
+      },
+      "github.com",
+      "https",
+    ),
+    "",
+  );
+
+  assertEquals(
+    getGitUrl(
+      {
+        name: "dpp.vim",
+        repo: "https://github.com/Shougo/dpp.vim.git",
+      },
+      "github.com",
+      "https",
+    ),
+    "https://github.com/Shougo/dpp.vim.git",
+  );
+
+  assertEquals(
+    getGitUrl(
+      {
+        name: "dpp.vim",
+        repo: "Shougo/dpp.vim",
+      },
+      "github.com",
+      "ssh",
+    ),
+    "git@github.com:Shougo/dpp.vim.git",
+  );
+});
