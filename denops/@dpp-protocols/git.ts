@@ -13,7 +13,7 @@ import {
   isDirectory,
   safeStat,
 } from "https://deno.land/x/dpp_vim@v0.2.0/utils.ts";
-import { isAbsolute } from "https://deno.land/std@0.223.0/path/mod.ts";
+import { isAbsolute } from "jsr:@std/path@0.224.0";
 
 type Params = {
   cloneDepth: number;
