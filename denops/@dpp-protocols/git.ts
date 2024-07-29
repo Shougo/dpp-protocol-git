@@ -1,19 +1,18 @@
 import {
-  assertEquals,
-  Denops,
-  vars,
-} from "https://deno.land/x/dpp_vim@v0.2.0/deps.ts";
-import {
   BaseProtocol,
   Command,
+  Denops,
   Plugin,
   ProtocolOptions,
-} from "https://deno.land/x/dpp_vim@v0.2.0/types.ts";
+} from "jsr:@shougo/dpp-vim@1.0.0/types";
 import {
   isDirectory,
   safeStat,
-} from "https://deno.land/x/dpp_vim@v0.2.0/utils.ts";
+} from "jsr:@shougo/dpp-vim@1.0.0/utils";
+
 import { isAbsolute } from "jsr:@std/path@0.224.0";
+import { assertEquals } from "jsr:@std/assert@1.0.1";
+import * as vars from "jsr:@denops/std@7.0.0/variable";
 
 type Params = {
   cloneDepth: number;
