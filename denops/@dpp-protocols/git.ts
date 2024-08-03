@@ -4,15 +4,15 @@ import {
   Denops,
   Plugin,
   ProtocolOptions,
-} from "jsr:@shougo/dpp-vim@1.0.0/types";
+} from "jsr:@shougo/dpp-vim@~1.0.0/types";
 import {
   isDirectory,
   safeStat,
-} from "jsr:@shougo/dpp-vim@1.0.0/utils";
+} from "jsr:@shougo/dpp-vim@~1.0.0/utils";
 
-import { isAbsolute } from "jsr:@std/path@1.0.2";
-import { assertEquals } from "jsr:@std/assert@1.0.1";
-import * as vars from "jsr:@denops/std@7.0.0/variable";
+import { isAbsolute } from "jsr:@std/path@~1.0.2";
+import { assertEquals } from "jsr:@std/assert@~1.0.1";
+import * as vars from "jsr:@denops/std@~7.0.0/variable";
 
 type Params = {
   cloneDepth: number;
