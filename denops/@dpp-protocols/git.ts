@@ -473,7 +473,8 @@ function getGitUrl(
     ? `git@${host}:${user}/${name}`
     : `${protocol}://${host}/${user}/${name}`;
 
-  return url.endsWith(".git") ? url : url + ".git";
+  // NOTE: "git.sr.ht" does not support ".git" url!
+  return host === "git.sr.ht" || url.endsWith(".git") ? url : url + ".git";
 }
 
 async function getGitDir(base: string): Promise<string> {
@@ -552,5 +553,29 @@ Deno.test("getGitUrl", () => {
       "ssh",
     ),
     "git@github.com:Shougo/dpp.vim.git",
+  );
+
+  assertEquals(
+    getGitUrl(
+      {
+        name: "lsp_lines.nvim",
+        repo: "~whynothugo/lsp_lines.nvim",
+      },
+      "git.sr.ht",
+      "https",
+    ),
+    "https://git.sr.ht/~whynothugo/lsp_lines.nvim",
+  );
+
+  assertEquals(
+    getGitUrl(
+      {
+        name: "lsp_lines.nvim",
+        repo: "~whynothugo/lsp_lines.nvim",
+      },
+      "git.sr.ht",
+      "ssh",
+    ),
+    "git@git.sr.ht:~whynothugo/lsp_lines.nvim",
   );
 });
