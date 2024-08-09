@@ -3,11 +3,11 @@ import {
   type Command,
   type Plugin,
   type ProtocolOptions,
-} from "jsr:@shougo/dpp-vim@~1.0.0/types";
+} from "jsr:@shougo/dpp-vim@~2.0.0/types";
 import {
   isDirectory,
   safeStat,
-} from "jsr:@shougo/dpp-vim@~1.0.0/utils";
+} from "jsr:@shougo/dpp-vim@~2.0.0/utils";
 
 import type { Denops } from "jsr:@denops/std@~7.0.1";
 import * as vars from "jsr:@denops/std@~7.0.0/variable";
@@ -15,7 +15,7 @@ import * as vars from "jsr:@denops/std@~7.0.0/variable";
 import { isAbsolute } from "jsr:@std/path@~1.0.2";
 import { assertEquals } from "jsr:@std/assert@~1.0.1";
 
-type Params = {
+export type Params = {
   cloneDepth: number;
   commandPath: string;
   defaultBranch: string;
@@ -27,9 +27,9 @@ type Params = {
   pullArgs: string[];
 };
 
-type GitPlugin = Plugin & {
-  __gitDefaultBranch?: string;
-  __gitRemote?: string;
+export type Attrs = {
+  gitDefaultBranch?: string;
+  gitRemote?: string;
 };
 
 export class Protocol extends BaseProtocol<Params> {
@@ -66,7 +66,6 @@ export class Protocol extends BaseProtocol<Params> {
       if (await isDirectory(path)) {
         // Local repository
         return {
-          frozen: true,
           local: true,
           path,
         };
@@ -104,7 +103,7 @@ export class Protocol extends BaseProtocol<Params> {
 
   override async getSyncCommands(args: {
     denops: Denops;
-    plugin: GitPlugin;
+    plugin: Plugin;
     protocolOptions: ProtocolOptions;
     protocolParams: Params;
   }): Promise<Command[]> {
@@ -123,10 +122,12 @@ export class Protocol extends BaseProtocol<Params> {
         "fetch",
       ]);
 
+      const attrs = args.plugin?.protocolAttrs as Attrs;
+
       const remoteArgs = [
         "remote",
         "set-head",
-        args.plugin.__gitRemote ?? args.protocolParams.defaultRemote,
+        attrs?.gitRemote ?? args.protocolParams.defaultRemote,
         "-a",
       ];
 
@@ -292,7 +293,7 @@ export class Protocol extends BaseProtocol<Params> {
 
   override async getRevisionLockCommands(args: {
     denops: Denops;
-    plugin: GitPlugin;
+    plugin: Plugin;
     protocolParams: Params;
   }): Promise<Command[]> {
     if (!args.plugin.repo || !args.plugin.path) {
@@ -351,8 +352,8 @@ export class Protocol extends BaseProtocol<Params> {
 
       if (rev.match(/fatal: /)) {
         // Fix "fatal: ref HEAD is not a symbolic ref" error
-        rev = args.plugin.__gitDefaultBranch ??
-          args.protocolParams.defaultBranch;
+        const attrs = args.plugin?.protocolAttrs as Attrs;
+        rev = attrs?.gitDefaultBranch ?? args.protocolParams.defaultBranch;
       }
     }
 
