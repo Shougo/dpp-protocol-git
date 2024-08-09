@@ -3,11 +3,11 @@ import {
   type Command,
   type Plugin,
   type ProtocolOptions,
-} from "jsr:@shougo/dpp-vim@~1.0.0/types";
+} from "jsr:@shougo/dpp-vim@~2.0.0/types";
 import {
   isDirectory,
   safeStat,
-} from "jsr:@shougo/dpp-vim@~1.0.0/utils";
+} from "jsr:@shougo/dpp-vim@~2.0.0/utils";
 
 import type { Denops } from "jsr:@denops/std@~7.0.1";
 import * as vars from "jsr:@denops/std@~7.0.0/variable";
