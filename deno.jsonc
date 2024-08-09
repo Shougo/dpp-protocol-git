@@ -2,7 +2,7 @@
   "name": "@shougo/dpp-protocol-git",
   "version": "0.0.0",
   "exports": {
-    "./": "./denops/@dpp-protocols/git.ts",
+    ".": "./denops/@dpp-protocols/git.ts"
   },
   "publish": {
     "include": [
