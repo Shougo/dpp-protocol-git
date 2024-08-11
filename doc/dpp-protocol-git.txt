@@ -8,7 +8,9 @@ CONTENTS                                           *dpp-protocol-git-contents*
 Introduction		|dpp-protocol-git-introduction|
 Install			|dpp-protocol-git-install|
 Examples		|dpp-protocol-git-examples|
-Params			|dpp-protocol-git-params|
+Interface		|dpp-ext-installer-interface|
+  Attrs			  |dpp-protocol-git-attrs|
+  Params		  |dpp-protocol-git-params|
 Compatibility		|dpp-protocol-git-compatibility|
 
 
@@ -46,6 +48,25 @@ EXAMPLES                                           *dpp-protocol-git-examples*
 <
 
 ==============================================================================
+INTERFACE                                         *dpp-protocol-git-interface*
+
+
+------------------------------------------------------------------------------
+ATTRS                                                 *dpp-protocol-git-attrs*
+
+                                      *dpp-protocol-git-attr-gitDefaultBranch*
+gitDefaultBranch
+		The default branch used for git (github).
+		
+		Default: |dpp-protocol-git-param-defaultBranch|
+
+                                             *dpp-protocol-git-attr-gitRemote*
+gitRemote
+		The remote branch for git type.
+		
+		Default: |dpp-protocol-git-param-defaultRemote|
+
+------------------------------------------------------------------------------
 PARAMS                                               *dpp-protocol-git-params*
 
                                            *dpp-protocol-git-param-cloneDepth*
