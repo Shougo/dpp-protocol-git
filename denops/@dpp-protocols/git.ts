@@ -3,14 +3,14 @@ import {
   type Command,
   type Plugin,
   type ProtocolOptions,
-} from "jsr:@shougo/dpp-vim@~2.0.0/types";
+} from "jsr:@shougo/dpp-vim@~2.3.0/types";
 import {
   isDirectory,
   safeStat,
-} from "jsr:@shougo/dpp-vim@~2.0.0/utils";
+} from "jsr:@shougo/dpp-vim@~2.3.0/utils";
 
-import type { Denops } from "jsr:@denops/std@~7.0.1";
-import * as vars from "jsr:@denops/std@~7.0.0/variable";
+import type { Denops } from "jsr:@denops/std@~7.1.0";
+import * as vars from "jsr:@denops/std@~7.1.0/variable";
 
 import { isAbsolute } from "jsr:@std/path@~1.0.2";
 import { assertEquals } from "jsr:@std/assert@~1.0.1";
@@ -115,6 +115,8 @@ export class Protocol extends BaseProtocol<Params> {
     const credentialHelper = args.protocolParams.enableCredentialHelper ? [] : [
       "-c",
       "credential.helper=",
+      "-c",
+      "core.fsmonitor=false",
     ];
 
     if (await isDirectory(args.plugin.path)) {
