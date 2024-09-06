@@ -11,8 +11,8 @@ import { isDirectory, safeStat } from "jsr:@shougo/dpp-vim@~3.0.0/utils";
 import type { Denops } from "jsr:@denops/std@~7.1.0";
 import * as vars from "jsr:@denops/std@~7.1.0/variable";
 
-import { isAbsolute } from "jsr:@std/path@~1.0.2";
-import { assertEquals } from "jsr:@std/assert@~1.0.1";
+import { isAbsolute } from "jsr:@std/path@~1.0.2/is-absolute";
+import { assertEquals } from "jsr:@std/assert@~1.0.1/equals";
 
 export type Params = {
   cloneDepth: number;
