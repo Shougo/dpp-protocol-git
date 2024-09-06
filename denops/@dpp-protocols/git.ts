@@ -6,10 +6,7 @@ import {
   BaseProtocol,
   type Command,
 } from "jsr:@shougo/dpp-vim@~3.0.0/protocol";
-import {
-  isDirectory,
-  safeStat,
-} from "jsr:@shougo/dpp-vim@~3.0.0/utils";
+import { isDirectory, safeStat } from "jsr:@shougo/dpp-vim@~3.0.0/utils";
 
 import type { Denops } from "jsr:@denops/std@~7.1.0";
 import * as vars from "jsr:@denops/std@~7.1.0/variable";
@@ -436,7 +433,7 @@ function getGitUrl(
   let name = "";
 
   const sshMatch = plugin.repo.match(
-    /^git@(?<host>[^:]+):(?<user>[^\/]+)\/(?<name>.+)/
+    /^git@(?<host>[^:]+):(?<user>[^\/]+)\/(?<name>.+)/,
   );
   const protocolMatch = plugin.repo.match(
     /^(?<protocol>[^:]+):\/\/(?<host>[^\/]+)\/(?<user>[^\/]+)\/(?<name>.+)/,
