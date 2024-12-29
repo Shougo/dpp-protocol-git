@@ -1,15 +1,15 @@
 import {
   type Plugin,
   type ProtocolOptions,
-} from "jsr:@shougo/dpp-vim@~3.1.0/types";
+} from "jsr:@shougo/dpp-vim@~4.1.0/types";
 import {
   BaseProtocol,
   type Command,
-} from "jsr:@shougo/dpp-vim@~3.1.0/protocol";
-import { isDirectory, safeStat } from "jsr:@shougo/dpp-vim@~3.1.0/utils";
+} from "jsr:@shougo/dpp-vim@~4.1.0/protocol";
+import { isDirectory, safeStat } from "jsr:@shougo/dpp-vim@~4.1.0/utils";
 
-import type { Denops } from "jsr:@denops/std@~7.3.0";
-import * as vars from "jsr:@denops/std@~7.3.0/variable";
+import type { Denops } from "jsr:@denops/std@~7.4.0";
+import * as vars from "jsr:@denops/std@~7.4.0/variable";
 
 import { isAbsolute } from "jsr:@std/path@~1.0.2/is-absolute";
 import { assertEquals } from "jsr:@std/assert@~1.0.1/equals";
@@ -76,6 +76,7 @@ export class Protocol extends BaseProtocol<Params> {
       return;
     }
 
+    // NOTE: github acceleration URL may include https:// in URL
     const directory = url.replace(/\.git$/, "").replace(/https:\/+|^git@/g, "")
       .replace(/:/, "/");
 
