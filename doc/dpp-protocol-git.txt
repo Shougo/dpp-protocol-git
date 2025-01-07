@@ -122,6 +122,14 @@ enablePartialClone
 
 		Default: false
 
+                                      *dpp-protocol-git-param-enableSSLVerify*
+enableSSLVerify
+		Enable SSL verify.
+		You can disable the feature if you need to use self-signed
+		certificates.
+
+		Default: true
+
                                              *dpp-protocol-git-param-pullArgs*
 pullArgs
 		The git command args used to pull updates.

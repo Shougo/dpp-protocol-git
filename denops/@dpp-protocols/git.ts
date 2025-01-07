@@ -23,6 +23,7 @@ export type Params = {
   defaultRemote: string;
   enableCredentialHelper: boolean;
   enablePartialClone: boolean;
+  enableSSLVerify: boolean;
   pullArgs: string[];
 };
 
@@ -118,9 +119,15 @@ export class Protocol extends BaseProtocol<Params> {
       "-c",
       "core.fsmonitor=false",
     ];
+    const sslVerify = args.protocolParams.enableSSLVerify ? [] : [
+      "-c",
+      "http.sslVerify=false",
+    ];
+
+    const initArgs = credentialHelper.concat(sslVerify);
 
     if (await isDirectory(args.plugin.path)) {
-      const fetchArgs = credentialHelper.concat([
+      const fetchArgs = initArgs.concat([
         "fetch",
       ]);
 
@@ -174,7 +181,7 @@ export class Protocol extends BaseProtocol<Params> {
 
       return commands;
     } else {
-      const commandArgs = credentialHelper.concat([
+      const commandArgs = initArgs.concat([
         "clone",
         "--recursive",
       ]);
@@ -435,6 +442,7 @@ export class Protocol extends BaseProtocol<Params> {
       defaultRemote: "origin",
       enableCredentialHelper: false,
       enablePartialClone: false,
+      enableSSLVerify: true,
       pullArgs: ["pull", "--ff", "--ff-only"],
     };
   }
