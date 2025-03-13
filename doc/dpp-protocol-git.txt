@@ -112,6 +112,7 @@ defaultRemote
                                *dpp-protocol-git-param-enableCredentialHelper*
 enableCredentialHelper
 		Enable git credential helper.
+		It is useful when you need to use saved password.
 
 		Default: false
 
