@@ -1,12 +1,12 @@
 import {
   type Plugin,
   type ProtocolOptions,
-} from "jsr:@shougo/dpp-vim@~4.1.0/types";
+} from "jsr:@shougo/dpp-vim@~4.2.0/types";
 import {
   BaseProtocol,
   type Command,
-} from "jsr:@shougo/dpp-vim@~4.1.0/protocol";
-import { isDirectory, safeStat } from "jsr:@shougo/dpp-vim@~4.1.0/utils";
+} from "jsr:@shougo/dpp-vim@~4.2.0/protocol";
+import { isDirectory, safeStat } from "jsr:@shougo/dpp-vim@~4.2.0/utils";
 
 import type { Denops } from "jsr:@denops/std@~7.5.0";
 import * as vars from "jsr:@denops/std@~7.5.0/variable";
@@ -81,11 +81,15 @@ export class Protocol extends BaseProtocol<Params> {
     const directory = url.replace(/\.git$/, "").replace(/https:\/+|^git@/g, "")
       .replace(/:/, "/");
 
+    const browseUrl = url.replace(/^git@github.com:/, "https://github.com/")
+      .replace(/^git@git.sr.ht:/, "https://git.sr.ht").replace(/\.git$/, '');
+
     return {
       path: `${await vars.g.get(
         args.denops,
         "dpp#_base_path",
       )}/repos/${directory}`,
+      url: browseUrl,
     };
   }
 
