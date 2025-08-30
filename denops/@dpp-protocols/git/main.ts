@@ -1,18 +1,12 @@
-import {
-  type Plugin,
-  type ProtocolOptions,
-} from "jsr:@shougo/dpp-vim@~4.2.0/types";
-import {
-  BaseProtocol,
-  type Command,
-} from "jsr:@shougo/dpp-vim@~4.2.0/protocol";
-import { isDirectory, safeStat } from "jsr:@shougo/dpp-vim@~4.2.0/utils";
+import { type Plugin, type ProtocolOptions } from "@shougo/dpp-vim/types";
+import { BaseProtocol, type Command } from "@shougo/dpp-vim/protocol";
+import { isDirectory, safeStat } from "@shougo/dpp-vim/utils";
 
-import type { Denops } from "jsr:@denops/std@~7.5.0";
-import * as vars from "jsr:@denops/std@~7.5.0/variable";
+import type { Denops } from "@denops/std";
+import * as vars from "@denops/std/variable";
 
-import { isAbsolute } from "jsr:@std/path@~1.0.2/is-absolute";
-import { assertEquals } from "jsr:@std/assert@~1.0.1/equals";
+import { isAbsolute } from "@std/path/is-absolute";
+import { assertEquals } from "@std/assert/equals";
 
 export type Params = {
   cloneDepth: number;
@@ -82,7 +76,7 @@ export class Protocol extends BaseProtocol<Params> {
       .replace(/:/, "/");
 
     const browseUrl = url.replace(/^git@github.com:/, "https://github.com/")
-      .replace(/^git@git.sr.ht:/, "https://git.sr.ht").replace(/\.git$/, '');
+      .replace(/^git@git.sr.ht:/, "https://git.sr.ht").replace(/\.git$/, "");
 
     return {
       path: `${await vars.g.get(
