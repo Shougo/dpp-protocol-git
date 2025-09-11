@@ -122,12 +122,10 @@ export class Protocol extends BaseProtocol<Params> {
       "http.sslVerify=false",
     ];
 
-    const initArgs = credentialHelper.concat(sslVerify);
+    const initArgs = [...credentialHelper, ...sslVerify];
 
     if (await isDirectory(args.plugin.path)) {
-      const fetchArgs = initArgs.concat([
-        "fetch",
-      ]);
+      const fetchArgs = [...initArgs, "fetch"];
 
       const attrs = args.plugin?.protocolAttrs as Attrs;
 
@@ -179,10 +177,11 @@ export class Protocol extends BaseProtocol<Params> {
 
       return commands;
     } else {
-      const commandArgs = initArgs.concat([
+      const commandArgs = [
+        ...initArgs,
         "clone",
         "--recursive",
-      ]);
+      ];
 
       if (args.protocolParams.enablePartialClone) {
         commandArgs.push("--filter=blob:none");
