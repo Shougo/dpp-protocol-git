@@ -367,6 +367,8 @@ export class Protocol extends BaseProtocol<Params> {
       command: args.protocolParams.commandPath,
       args: [
         "checkout",
+        "--quiet",
+        "--guess",
         rev,
         "--",
       ],
