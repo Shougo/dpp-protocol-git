@@ -15,4 +15,9 @@ https://github.com/Shougo/dpp.vim
 ## Configuration
 
 ```typescript
+  args.contextBuilder.setGlobal({
+    protocols: [
+      "git",
+    ],
+  });
 ```
