@@ -578,6 +578,18 @@ Deno.test("getGitUrl", () => {
   assertEquals(
     getGitUrl(
       {
+        name: "leap.nvim",
+        repo: "andyg/leap.nvim",
+      },
+      "codeberg.org",
+      "https",
+    ),
+    "https://codeberg.org/andyg/leap.nvim.git",
+  );
+
+  assertEquals(
+    getGitUrl(
+      {
         name: "dpp.vim",
         repo: "Shougo/dpp.vim",
       },
