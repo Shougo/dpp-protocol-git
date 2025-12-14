@@ -431,6 +431,35 @@ export class Protocol extends BaseProtocol<Params> {
     return headFileLine;
   }
 
+  override async getRemoteRevision(args: {
+    denops: Denops;
+    plugin: Plugin;
+    protocolParams: Params;
+  }): Promise<string> {
+    if (!args.plugin.repo || !args.plugin.path) {
+      return "";
+    }
+
+    const proc = new Deno.Command(
+      args.protocolParams.commandPath,
+      {
+        args: [
+          "rev-parse",
+          `refs/remotes/${args.protocolParams.defaultRemote}/HEAD`,
+        ],
+        cwd: await isDirectory(args.plugin.path ?? "")
+          ? args.plugin.path
+          : Deno.cwd(),
+          stdout: "piped",
+          stderr: "piped",
+      },
+    );
+    const { stdout } = await proc.output();
+
+    const lines = new TextDecoder().decode(stdout).split("\n");
+    return lines.length > 0 ? lines[0] : "";
+  }
+
   override getCheckRemoteCommands(args: {
     denops: Denops;
     plugin: Plugin;
