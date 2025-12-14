@@ -431,6 +431,40 @@ export class Protocol extends BaseProtocol<Params> {
     return headFileLine;
   }
 
+  override getCheckRemoteCommands(args: {
+    denops: Denops;
+    plugin: Plugin;
+    protocolParams: Params;
+    newRev: string;
+    oldRev: string;
+  }): Command[] {
+    if (!args.plugin.repo || !args.plugin.path) {
+      return [];
+    }
+
+    const remote = args.protocolParams.defaultRemote;
+
+    return [
+      {
+        command: args.protocolParams.commandPath,
+        args: [
+          "fetch",
+          `${remote}`,
+        ],
+      },
+      {
+        command: args.protocolParams.commandPath,
+        args: [
+          "log",
+          `HEAD..${remote}/HEAD`,
+          "--graph",
+          "--no-show-signature",
+          '--pretty=format:"%h [%cr] %s"',
+        ],
+      },
+    ];
+  }
+
   override params(): Params {
     return {
       cloneDepth: 0,
