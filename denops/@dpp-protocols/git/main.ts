@@ -47,17 +47,13 @@ export class Protocol extends BaseProtocol<Params> {
     }
 
     if (isAbsolute(args.plugin.repo) || args.plugin.repo.match(/^~/)) {
-      if (args.plugin.local) {
-        // Already local
-        return;
-      }
-
       const path = await args.denops.call(
         "dpp#util#_expand",
         args.plugin.repo,
       ) as string;
 
-      if (await isDirectory(path)) {
+      const gitDir = await getGitDir(path);
+      if (gitDir.length !== 0) {
         // Local repository
         return {
           local: true,
@@ -450,8 +446,8 @@ export class Protocol extends BaseProtocol<Params> {
         cwd: await isDirectory(args.plugin.path ?? "")
           ? args.plugin.path
           : Deno.cwd(),
-          stdout: "piped",
-          stderr: "piped",
+        stdout: "piped",
+        stderr: "piped",
       },
     );
     const { stdout } = await proc.output();
