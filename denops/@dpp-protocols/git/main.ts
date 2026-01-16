@@ -222,14 +222,19 @@ export class Protocol extends BaseProtocol<Params> {
     }];
   }
 
-  override getDiffCommands(args: {
+  override async getDiffCommands(args: {
     denops: Denops;
     plugin: Plugin;
     protocolParams: Params;
     newRev: string;
     oldRev: string;
-  }): Command[] {
+  }): Promise<Command[]> {
     if (!args.plugin.repo || !args.plugin.path) {
+      return [];
+    }
+
+    const gitDir = await getGitDir(args.plugin.path);
+    if (gitDir.length === 0) {
       return [];
     }
 
@@ -260,6 +265,11 @@ export class Protocol extends BaseProtocol<Params> {
       return [];
     }
 
+    const gitDir = await getGitDir(args.plugin.path);
+    if (gitDir.length === 0) {
+      return [];
+    }
+
     // NOTE: If the oldRev is not the ancestor of two branches. Then do not use
     // %s^.  use %s^ will show one commit message which already shown last
     // time.
@@ -271,9 +281,7 @@ export class Protocol extends BaseProtocol<Params> {
           args.oldRev,
           args.newRev,
         ],
-        cwd: await isDirectory(args.plugin.path ?? "")
-          ? args.plugin.path
-          : Deno.cwd(),
+        cwd: args.plugin.path,
         stdout: "piped",
         stderr: "piped",
       },
@@ -302,6 +310,11 @@ export class Protocol extends BaseProtocol<Params> {
       return [];
     }
 
+    const gitDir = await getGitDir(args.plugin.path);
+    if (gitDir.length === 0) {
+      return [];
+    }
+
     let rev = args.plugin.rev ?? "";
 
     if (rev && rev.match(/\*/)) {
@@ -316,9 +329,7 @@ export class Protocol extends BaseProtocol<Params> {
             "--sort",
             "-version:refname",
           ],
-          cwd: await isDirectory(args.plugin.path ?? "")
-            ? args.plugin.path
-            : Deno.cwd(),
+          cwd: args.plugin.path,
           stdout: "piped",
           stderr: "piped",
         },
@@ -340,9 +351,7 @@ export class Protocol extends BaseProtocol<Params> {
             "--short",
             "HEAD",
           ],
-          cwd: await isDirectory(args.plugin.path ?? "")
-            ? args.plugin.path
-            : Deno.cwd(),
+          cwd: args.plugin.path,
           stdout: "piped",
           stderr: "piped",
         },
@@ -371,14 +380,19 @@ export class Protocol extends BaseProtocol<Params> {
     }];
   }
 
-  override getChangesCountCommands(args: {
+  override async getChangesCountCommands(args: {
     denops: Denops;
     plugin: Plugin;
     protocolParams: Params;
     newRev: string;
     oldRev: string;
-  }): Command[] {
+  }): Promise<Command[]> {
     if (!args.plugin.repo || !args.plugin.path) {
+      return [];
+    }
+
+    const gitDir = await getGitDir(args.plugin.path);
+    if (gitDir.length === 0) {
       return [];
     }
 
@@ -404,6 +418,7 @@ export class Protocol extends BaseProtocol<Params> {
     if (gitDir.length === 0) {
       return "";
     }
+
     const headFileLine =
       (await Deno.readTextFile(`${gitDir}/HEAD`)).split("\n")[0];
 
@@ -436,6 +451,11 @@ export class Protocol extends BaseProtocol<Params> {
       return "";
     }
 
+    const gitDir = await getGitDir(args.plugin.path);
+    if (gitDir.length === 0) {
+      return "";
+    }
+
     const proc = new Deno.Command(
       args.protocolParams.commandPath,
       {
@@ -443,9 +463,7 @@ export class Protocol extends BaseProtocol<Params> {
           "rev-parse",
           `refs/remotes/${args.protocolParams.defaultRemote}/HEAD`,
         ],
-        cwd: await isDirectory(args.plugin.path ?? "")
-          ? args.plugin.path
-          : Deno.cwd(),
+        cwd: args.plugin.path,
         stdout: "piped",
         stderr: "piped",
       },
@@ -456,14 +474,17 @@ export class Protocol extends BaseProtocol<Params> {
     return lines.length > 0 ? lines[0] : "";
   }
 
-  override getCheckRemoteCommands(args: {
+  override async getCheckRemoteCommands(args: {
     denops: Denops;
     plugin: Plugin;
     protocolParams: Params;
-    newRev: string;
-    oldRev: string;
-  }): Command[] {
+  }): Promise<Command[]> {
     if (!args.plugin.repo || !args.plugin.path) {
+      return [];
+    }
+
+    const gitDir = await getGitDir(args.plugin.path);
+    if (gitDir.length === 0) {
       return [];
     }
 
