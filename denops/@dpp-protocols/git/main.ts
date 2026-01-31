@@ -3,7 +3,6 @@ import { BaseProtocol, type Command } from "@shougo/dpp-vim/protocol";
 import { isDirectory, safeStat } from "@shougo/dpp-vim/utils";
 
 import type { Denops } from "@denops/std";
-import * as vars from "@denops/std/variable";
 
 import { isAbsolute } from "@std/path/is-absolute";
 import { assertEquals } from "@std/assert/equals";
@@ -74,11 +73,10 @@ export class Protocol extends BaseProtocol<Params> {
     const browseUrl = url.replace(/^git@github.com:/, "https://github.com/")
       .replace(/^git@git.sr.ht:/, "https://git.sr.ht").replace(/\.git$/, "");
 
+    const basePath = await args.denops.call("dpp#util#_get_base_path");
+
     return {
-      path: `${await vars.g.get(
-        args.denops,
-        "dpp#_base_path",
-      )}/repos/${directory}`,
+      path: `${basePath}/repos/${directory}`,
       url: browseUrl,
     };
   }
