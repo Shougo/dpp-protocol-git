@@ -472,6 +472,70 @@ export class Protocol extends BaseProtocol<Params> {
     return lines.length > 0 ? lines[0] : "";
   }
 
+  override async getDateFromRevision(args: {
+    denops: Denops;
+    plugin: Plugin;
+    protocolParams: Params;
+    rev: string;
+  }): Promise<Date | null> {
+    if (!args.plugin.repo || !args.plugin.path) {
+      return null;
+    }
+
+    if (!args.rev || args.rev.length === 0) {
+      return null;
+    }
+
+    const gitDir = await getGitDir(args.plugin.path);
+    if (gitDir.length === 0) {
+      return null;
+    }
+
+    const cmd = args.protocolParams.commandPath;
+
+    // ISO 8601 (%cI)
+    try {
+      const proc = new Deno.Command(cmd, {
+        args: ["show", "-s", "--format=%cI", args.rev],
+          cwd: args.plugin.path,
+        stdout: "piped",
+        stderr: "piped",
+      });
+      const { stdout } = await proc.output();
+      const out = new TextDecoder().decode(stdout).trim();
+
+      if (out) {
+        const d = new Date(out); // ISO 8601 は Date で直接パース可能
+        if (!Number.isNaN(d.getTime())) {
+          return d;
+        }
+      }
+    } catch {
+      // Ignore error
+    }
+
+    // UNIX epoch (%ct)
+    try {
+      const proc2 = new Deno.Command(cmd, {
+        args: ["show", "-s", "--format=%ct", args.rev],
+          cwd: args.plugin.path,
+        stdout: "piped",
+        stderr: "piped",
+      });
+      const { stdout: stdout2 } = await proc2.output();
+      const out2 = new TextDecoder().decode(stdout2).trim();
+
+      const epoch = Number(out2);
+      if (!Number.isNaN(epoch)) {
+        return new Date(epoch * 1000);
+      }
+    } catch {
+      // Ignore error
+    }
+
+    return null;
+  }
+
   override async getCheckRemoteCommands(args: {
     denops: Denops;
     plugin: Plugin;
