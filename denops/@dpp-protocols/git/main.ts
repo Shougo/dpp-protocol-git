@@ -497,7 +497,7 @@ export class Protocol extends BaseProtocol<Params> {
     try {
       const proc = new Deno.Command(cmd, {
         args: ["show", "-s", "--format=%cI", args.rev],
-          cwd: args.plugin.path,
+        cwd: args.plugin.path,
         stdout: "piped",
         stderr: "piped",
       });
@@ -518,7 +518,7 @@ export class Protocol extends BaseProtocol<Params> {
     try {
       const proc2 = new Deno.Command(cmd, {
         args: ["show", "-s", "--format=%ct", args.rev],
-          cwd: args.plugin.path,
+        cwd: args.plugin.path,
         stdout: "piped",
         stderr: "piped",
       });
