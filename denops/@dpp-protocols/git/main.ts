@@ -505,7 +505,7 @@ export class Protocol extends BaseProtocol<Params> {
       const out = new TextDecoder().decode(stdout).trim();
 
       if (out) {
-        const d = new Date(out); // ISO 8601 は Date で直接パース可能
+        const d = new Date(out);
         if (!Number.isNaN(d.getTime())) {
           return d;
         }
