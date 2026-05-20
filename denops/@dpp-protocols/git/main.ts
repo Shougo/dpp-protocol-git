@@ -407,6 +407,7 @@ export class Protocol extends BaseProtocol<Params> {
   override async getRevision(args: {
     denops: Denops;
     plugin: Plugin;
+    protocolParams: Params;
   }): Promise<string> {
     if (!args.plugin.repo || !args.plugin.path) {
       return "";
@@ -414,30 +415,54 @@ export class Protocol extends BaseProtocol<Params> {
 
     const gitDir = await getGitDir(args.plugin.path);
     if (gitDir.length === 0) {
-      return "";
+      // Use git command.
+      return revParseHead(args.plugin.path, args.protocolParams.commandPath);
     }
 
-    const headFileLine =
-      (await Deno.readTextFile(`${gitDir}/HEAD`)).split("\n")[0];
+    try {
+      const headFileLine = (await Deno.readTextFile(`${gitDir}/HEAD`)).split(
+        "\n",
+      )[0].trim();
 
-    if (headFileLine.startsWith("ref: ")) {
-      const ref = headFileLine.slice(5);
-      if (await safeStat(`${gitDir}/${ref}`)) {
-        return (await Deno.readTextFile(`${gitDir}/${ref}`)).split("\n")[0];
+      if (headFileLine.startsWith("ref: ")) {
+        const ref = headFileLine.slice(5).trim();
+
+        // 1) refs
+        try {
+          if (await safeStat(`${gitDir}/${ref}`)) {
+            const content = (await Deno.readTextFile(`${gitDir}/${ref}`)).split(
+              "\n",
+            )[0].trim();
+            if (content) return content;
+          }
+        } catch (_: unknown) {
+          // Ignore
+        }
+
+        // 2) packed-refs
+        try {
+          const packed = await Deno.readTextFile(`${gitDir}/packed-refs`);
+          for (const line of packed.split("\n")) {
+            if (!line || line.startsWith("#")) continue;
+            // "sha ref"
+            if (line.includes(` ${ref}`) || line.endsWith(` ${ref}`)) {
+              const m = line.match(/^([0-9a-fA-F]+)\s+/);
+              if (m) return m[1];
+            }
+          }
+        } catch (_: unknown) {
+          // Ignore
+        }
+
+        // 3) Use "git rev-parse"
+        return revParseHead(args.plugin.path, args.protocolParams.commandPath);
       }
 
-      for (
-        const line of (await Deno.readTextFile(`${gitDir}/packed-refs`)).split(
-          "\n",
-        ).filter(
-          (line) => line.includes(` ${ref}`),
-        )
-      ) {
-        return line.replace(/^([0-9a-f]*) /, "$1");
-      }
+      return headFileLine;
+    } catch (_: unknown) {
+      // Fallback
+      return revParseHead(args.plugin.path, args.protocolParams.commandPath);
     }
-
-    return headFileLine;
   }
 
   override async getRemoteRevision(args: {
@@ -652,8 +677,49 @@ function getGitUrl(
 }
 
 async function getGitDir(base: string): Promise<string> {
-  // TODO: parse "." file
-  return await isDirectory(`${base}/.git`) ? `${base}/.git` : "";
+  const dotGit = `${base}/.git`;
+  try {
+    const stat = await Deno.lstat(dotGit);
+    if (stat.isDirectory) {
+      return dotGit;
+    }
+    if (stat.isFile) {
+      try {
+        const firstLine = (await Deno.readTextFile(dotGit)).split("\n")[0]
+          .trim();
+        const m = firstLine.match(/^gitdir: (.+)$/);
+        if (m && m[1]) {
+          const gitdir = m[1].trim();
+          if (isAbsolute(gitdir)) {
+            return gitdir;
+          } else {
+            return `${base}/${gitdir}`;
+          }
+        }
+      } catch (_: unknown) {
+        // Ignore
+      }
+    }
+  } catch (_: unknown) {
+    // Ignore
+  }
+  return "";
+}
+
+async function revParseHead(cwd: string, gitCmd = "git"): Promise<string> {
+  try {
+    const proc = new Deno.Command(gitCmd, {
+      args: ["rev-parse", "--verify", "HEAD"],
+      cwd,
+      stdout: "piped",
+      stderr: "piped",
+    });
+    const { stdout } = await proc.output();
+    const sha = new TextDecoder().decode(stdout).split("\n")[0].trim();
+    return sha ?? "";
+  } catch (_: unknown) {
+    return "";
+  }
 }
 
 Deno.test("getGitUrl", () => {
