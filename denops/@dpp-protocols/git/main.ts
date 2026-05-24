@@ -10,7 +10,6 @@ import { assertEquals } from "@std/assert/equals";
 export type Params = {
   cloneDepth: number;
   commandPath: string;
-  defaultBranch: string;
   defaultHubSite: string;
   defaultProtocol: string;
   defaultRemote: string;
@@ -362,7 +361,7 @@ export class Protocol extends BaseProtocol<Params> {
       if (rev.match(/fatal: /)) {
         // Fix "fatal: ref HEAD is not a symbolic ref" error
         const attrs = args.plugin?.protocolAttrs as Attrs;
-        rev = attrs?.gitDefaultBranch ?? args.protocolParams.defaultBranch;
+        rev = attrs?.gitDefaultBranch ?? "main";
       }
     }
 
@@ -479,22 +478,34 @@ export class Protocol extends BaseProtocol<Params> {
       return "";
     }
 
-    const proc = new Deno.Command(
-      args.protocolParams.commandPath,
-      {
-        args: [
-          "rev-parse",
-          `refs/remotes/${args.protocolParams.defaultRemote}/HEAD`,
-        ],
-        cwd: args.plugin.path,
-        stdout: "piped",
-        stderr: "piped",
-      },
-    );
-    const { stdout } = await proc.output();
+    const rev = args.plugin.rev ?? await getDefaultBranch(args);
+    const remote = args.protocolParams.defaultRemote ?? "origin";
+    const git = args.protocolParams.commandPath;
 
-    const lines = new TextDecoder().decode(stdout).split("\n");
-    return lines.length > 0 ? lines[0] : "";
+    for (
+      const refType of [
+        `refs/remotes/${remote}/${rev}`,
+        `refs/tags/${rev}`,
+        `${rev}`,
+      ]
+    ) {
+      const proc = new Deno.Command(
+        git,
+        {
+          args: ["rev-parse", "--verify", refType],
+          cwd: args.plugin.path,
+          stdout: "piped",
+          stderr: "piped",
+        },
+      );
+      const { stdout } = await proc.output();
+      const sha = new TextDecoder().decode(stdout).trim();
+      if (sha && /^[0-9a-f]{40}$/.test(sha)) {
+        return sha;
+      }
+    }
+
+    return "";
   }
 
   override async getDateFromRevision(args: {
@@ -583,6 +594,7 @@ export class Protocol extends BaseProtocol<Params> {
         args: [
           "fetch",
           `${remote}`,
+          "--tags",
         ],
       },
       {
@@ -602,7 +614,6 @@ export class Protocol extends BaseProtocol<Params> {
     return {
       cloneDepth: 0,
       commandPath: "git",
-      defaultBranch: "main",
       defaultHubSite: "github.com",
       defaultProtocol: "https",
       defaultRemote: "origin",
@@ -721,6 +732,51 @@ async function revParseHead(cwd: string, gitCmd = "git"): Promise<string> {
     return "";
   }
 }
+
+async function getDefaultBranch(args: {
+  denops: Denops;
+  plugin: Plugin;
+  protocolParams: Params;
+}): Promise<string> {
+  if (!args.plugin.repo || !args.plugin.path) {
+    return "";
+  }
+
+  const gitDir = await getGitDir(args.plugin.path);
+  if (gitDir.length === 0) {
+    return "";
+  }
+
+  const remote = args.protocolParams.defaultRemote ?? "origin";
+  const git = args.protocolParams.commandPath;
+
+  // Use symbolic-ref feature (git 1.8.7 or above required)
+  const proc = new Deno.Command(
+    git,
+    {
+      args: [
+        "symbolic-ref",
+        `refs/remotes/${remote}/HEAD`,
+      ],
+      cwd: args.plugin.path,
+      stdout: "piped",
+      stderr: "piped",
+    },
+  );
+  const { stdout } = await proc.output();
+
+  const lines = new TextDecoder().decode(stdout).split("\n");
+  let rev = lines.length > 0 ? lines[0] : "";
+
+  if (rev.match(/fatal: /)) {
+    // Fix "fatal: ref HEAD is not a symbolic ref" error
+    const attrs = args.plugin?.protocolAttrs as Attrs;
+    rev = attrs?.gitDefaultBranch ?? "main";
+  }
+
+  return rev;
+}
+
 
 Deno.test("getGitUrl", () => {
   assertEquals(

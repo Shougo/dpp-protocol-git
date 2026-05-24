@@ -63,7 +63,7 @@ ATTRS                                                 *dpp-protocol-git-attrs*
 gitDefaultBranch
 		The default branch used for git (github).
 		
-		Default: |dpp-protocol-git-param-defaultBranch|
+		Default: "main"
 
                                              *dpp-protocol-git-attr-gitRemote*
 gitRemote
@@ -88,12 +88,6 @@ commandPath
 		The "git" command path used for git type.
 
 		Default: "git"
-
-                                        *dpp-protocol-git-param-defaultBranch*
-defaultBranch
-		The default branch for git type.
-
-		Default: "main"
 
                                        *dpp-protocol-git-param-defaultHubSite*
 defaultHubSite
