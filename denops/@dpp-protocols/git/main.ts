@@ -572,6 +572,46 @@ export class Protocol extends BaseProtocol<Params> {
     return null;
   }
 
+  override async getHistories(args: {
+    denops: Denops;
+    plugin: Plugin;
+    protocolParams: Params;
+    startRev?: string;
+    endRev?: string;
+  }): Promise<string[]> {
+    if (!args.plugin.repo || !args.plugin.path) {
+      return [];
+    }
+
+    const gitDir = await getGitDir(args.plugin.path);
+    if (gitDir.length === 0) {
+      return [];
+    }
+
+    const git = args.protocolParams.commandPath;
+
+    const cmdArgs = ["rev-list"];
+    if (args.startRev) {
+      cmdArgs.push(args.startRev);
+    }
+    if (args.endRev) {
+      cmdArgs.push(args.endRev);
+    }
+
+    const proc = new Deno.Command(
+      git,
+      {
+        args: cmdArgs,
+        cwd: args.plugin.path,
+        stdout: "piped",
+        stderr: "piped",
+      },
+    );
+    const { stdout } = await proc.output();
+
+    return new TextDecoder().decode(stdout).split("\n");;
+  }
+
   override async getCheckRemoteCommands(args: {
     denops: Denops;
     plugin: Plugin;
