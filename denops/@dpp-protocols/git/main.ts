@@ -576,8 +576,8 @@ export class Protocol extends BaseProtocol<Params> {
     denops: Denops;
     plugin: Plugin;
     protocolParams: Params;
-    startRev?: string;
-    endRev?: string;
+    start?: string;
+    end?: string;
   }): Promise<string[]> {
     if (!args.plugin.repo || !args.plugin.path) {
       return [];
@@ -591,11 +591,11 @@ export class Protocol extends BaseProtocol<Params> {
     const git = args.protocolParams.commandPath;
 
     const cmdArgs = ["rev-list"];
-    if (args.startRev) {
-      cmdArgs.push(args.startRev);
+    if (args.start) {
+      cmdArgs.push(args.start);
     }
-    if (args.endRev) {
-      cmdArgs.push(args.endRev);
+    if (args.end) {
+      cmdArgs.push(args.end);
     }
 
     const proc = new Deno.Command(
