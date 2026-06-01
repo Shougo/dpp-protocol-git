@@ -1,6 +1,6 @@
 import type { Plugin, ProtocolOptions } from "@shougo/dpp-vim/types";
 import { BaseProtocol, type Command } from "@shougo/dpp-vim/protocol";
-import { isDirectory, safeStat } from "@shougo/dpp-vim/utils";
+import { isDirectory } from "@shougo/dpp-vim/utils";
 
 import type { Denops } from "@denops/std";
 
@@ -418,50 +418,69 @@ export class Protocol extends BaseProtocol<Params> {
       return revParseHead(args.plugin.path, args.protocolParams.commandPath);
     }
 
-    try {
-      const headFileLine = (await Deno.readTextFile(`${gitDir}/HEAD`)).split(
-        "\n",
-      )[0].trim();
+    const git = args.protocolParams.commandPath;
 
-      if (headFileLine.startsWith("ref: ")) {
-        const ref = headFileLine.slice(5).trim();
-
-        // 1) refs
-        try {
-          if (await safeStat(`${gitDir}/${ref}`)) {
-            const content = (await Deno.readTextFile(`${gitDir}/${ref}`)).split(
-              "\n",
-            )[0].trim();
-            if (content) return content;
-          }
-        } catch (_: unknown) {
-          // Ignore
-        }
-
-        // 2) packed-refs
-        try {
-          const packed = await Deno.readTextFile(`${gitDir}/packed-refs`);
-          for (const line of packed.split("\n")) {
-            if (!line || line.startsWith("#")) continue;
-            // "sha ref"
-            if (line.includes(` ${ref}`) || line.endsWith(` ${ref}`)) {
-              const m = line.match(/^([0-9a-fA-F]+)\s+/);
-              if (m) return m[1];
-            }
-          }
-        } catch (_: unknown) {
-          // Ignore
-        }
-
-        // 3) Use "git rev-parse"
-        return revParseHead(args.plugin.path, args.protocolParams.commandPath);
-      }
-
-      return headFileLine;
-    } catch (_: unknown) {
-      // Fallback
-      return revParseHead(args.plugin.path, args.protocolParams.commandPath);
+    // 1) Prefer Git command to resolve HEAD in a ref-format-agnostic way.
+    const head = await revParseHead(args.plugin.path, git);
+    if (head.length > 0) {
+      return head;
     }
+
+    // 2) Try to resolve the current branch name via Git, then resolve it to a
+    //    commit SHA using Git commands only.
+    try {
+      const proc = new Deno.Command(git, {
+        args: ["symbolic-ref", "--short", "HEAD"],
+        cwd: args.plugin.path,
+        stdout: "piped",
+        stderr: "piped",
+      });
+      const { stdout } = await proc.output();
+      const branch = new TextDecoder().decode(stdout).trim();
+      if (branch.length > 0 && !branch.startsWith("fatal: ")) {
+        const remote = args.protocolParams.defaultRemote ?? "origin";
+        for (
+          const refType of [
+            `refs/remotes/${remote}/${branch}`,
+            `refs/heads/${branch}`,
+            branch,
+          ]
+        ) {
+          const resolveProc = new Deno.Command(git, {
+            args: ["rev-parse", "--verify", refType],
+            cwd: args.plugin.path,
+            stdout: "piped",
+            stderr: "piped",
+          });
+          const { stdout: resolvedStdout } = await resolveProc.output();
+          const sha = new TextDecoder().decode(resolvedStdout).trim();
+          if (sha && /^[0-9a-f]{40}$/.test(sha)) {
+            return sha;
+          }
+        }
+      }
+    } catch (_: unknown) {
+      // Ignore
+    }
+
+    // 3) Fallback to a branch attr if available, then ask Git once more.
+    const attrs = args.plugin?.protocolAttrs as Attrs;
+    const defaultBranch = attrs?.gitDefaultBranch ?? "main";
+    if (defaultBranch.length > 0) {
+      const resolveProc = new Deno.Command(git, {
+        args: ["rev-parse", "--verify", defaultBranch],
+        cwd: args.plugin.path,
+        stdout: "piped",
+        stderr: "piped",
+      });
+      const { stdout } = await resolveProc.output();
+      const sha = new TextDecoder().decode(stdout).trim();
+      if (sha && /^[0-9a-f]{40}$/.test(sha)) {
+        return sha;
+      }
+    }
+
+    return "";
   }
 
   override async getRemoteRevision(args: {
@@ -609,7 +628,7 @@ export class Protocol extends BaseProtocol<Params> {
     );
     const { stdout } = await proc.output();
 
-    return new TextDecoder().decode(stdout).split("\n");;
+    return new TextDecoder().decode(stdout).split("\n");
   }
 
   override async getCheckRemoteCommands(args: {
@@ -816,7 +835,6 @@ async function getDefaultBranch(args: {
 
   return rev;
 }
-
 
 Deno.test("getGitUrl", () => {
   assertEquals(
