@@ -37,7 +37,7 @@ export class Protocol extends BaseProtocol<Params> {
 
     if (
       args.plugin.repo.match(
-        /\/\/(raw|gist)\.githubusercontent\.com\/|\/archive\/[^\/]+.zip$/,
+        /\/\/(raw|gist)\.githubusercontent\.com\/|\/archive\/.*\.zip$/,
       )
     ) {
       // Raw repository
