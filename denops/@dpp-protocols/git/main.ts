@@ -103,100 +103,14 @@ export class Protocol extends BaseProtocol<Params> {
       return [];
     }
 
-    const depth = args.protocolParams.cloneDepth;
-    const credentialHelper = args.protocolParams.enableCredentialHelper ? [] : [
-      "-c",
-      "credential.helper=",
-      "-c",
-      "core.fsmonitor=false",
-    ];
-    const sslVerify = args.protocolParams.enableSSLVerify ? [] : [
-      "-c",
-      "http.sslVerify=false",
-    ];
+    const initArgs = this.#getGitInitArgs(args.protocolParams);
+    const isExistingRepo = await isDirectory(args.plugin.path);
 
-    const initArgs = [...credentialHelper, ...sslVerify];
-
-    if (await isDirectory(args.plugin.path)) {
-      const fetchArgs = [...initArgs, "fetch"];
-
-      const attrs = args.plugin?.protocolAttrs as Attrs;
-
-      const remoteArgs = [
-        "remote",
-        "set-head",
-        attrs?.gitRemote ?? args.protocolParams.defaultRemote,
-        "-a",
-      ];
-
-      const submoduleArgs = [
-        "submodule",
-        "update",
-        "--init",
-        "--recursive",
-      ];
-
-      const commands = [];
-
-      commands.push(
-        {
-          command: args.protocolParams.commandPath,
-          args: fetchArgs,
-        },
-      );
-
-      if (!depth && depth <= 0) {
-        commands.push(
-          {
-            command: args.protocolParams.commandPath,
-            args: remoteArgs,
-          },
-        );
-      }
-
-      commands.push(
-        {
-          command: args.protocolParams.commandPath,
-          args: args.protocolParams.pullArgs,
-        },
-      );
-
-      commands.push(
-        {
-          command: args.protocolParams.commandPath,
-          args: submoduleArgs,
-        },
-      );
-
-      return commands;
-    } else {
-      const commandArgs = [
-        ...initArgs,
-        "clone",
-        "--recursive",
-      ];
-
-      if (args.protocolParams.enablePartialClone) {
-        commandArgs.push("--filter=blob:none");
-      }
-
-      if (depth && depth > 0) {
-        commandArgs.push(`--depth=${depth}`);
-
-        if (args.plugin.rev && args.plugin.rev.length > 0) {
-          commandArgs.push("--branch");
-          commandArgs.push(args.plugin.rev);
-        }
-      }
-
-      commandArgs.push(this.getUrl(args));
-      commandArgs.push(args.plugin.path);
-
-      return [{
-        command: args.protocolParams.commandPath,
-        args: commandArgs,
-      }];
+    if (isExistingRepo) {
+      return this.#getFetchCommands(args, initArgs);
     }
+
+    return this.#getCloneCommands(args, initArgs);
   }
 
   override getRollbackCommands(args: {
@@ -414,68 +328,36 @@ export class Protocol extends BaseProtocol<Params> {
 
     const gitDir = await getGitDir(args.plugin.path);
     if (gitDir.length === 0) {
-      // Use git command.
-      return revParseHead(args.plugin.path, args.protocolParams.commandPath);
+      return await revParseHead(
+        args.plugin.path,
+        args.protocolParams.commandPath,
+      );
     }
 
     const git = args.protocolParams.commandPath;
 
-    // 1) Prefer Git command to resolve HEAD in a ref-format-agnostic way.
     const head = await revParseHead(args.plugin.path, git);
     if (head.length > 0) {
       return head;
     }
 
-    // 2) Try to resolve the current branch name via Git, then resolve it to a
-    //    commit SHA using Git commands only.
-    try {
-      const proc = new Deno.Command(git, {
-        args: ["symbolic-ref", "--short", "HEAD"],
-        cwd: args.plugin.path,
-        stdout: "piped",
-        stderr: "piped",
-      });
-      const { stdout } = await proc.output();
-      const branch = new TextDecoder().decode(stdout).trim();
-      if (branch.length > 0 && !branch.startsWith("fatal: ")) {
-        const remote = args.protocolParams.defaultRemote ?? "origin";
-        for (
-          const refType of [
-            `refs/remotes/${remote}/${branch}`,
-            `refs/heads/${branch}`,
-            branch,
-          ]
-        ) {
-          const resolveProc = new Deno.Command(git, {
-            args: ["rev-parse", "--verify", refType],
-            cwd: args.plugin.path,
-            stdout: "piped",
-            stderr: "piped",
-          });
-          const { stdout: resolvedStdout } = await resolveProc.output();
-          const sha = new TextDecoder().decode(resolvedStdout).trim();
-          if (sha && /^[0-9a-f]{40}$/.test(sha)) {
-            return sha;
-          }
-        }
+    const branch = await getCurrentBranch(args.plugin.path, git);
+    if (branch.length > 0) {
+      const sha = await resolveBranchToSha(
+        args.plugin.path,
+        git,
+        branch,
+        args.protocolParams.defaultRemote ?? "origin",
+      );
+      if (sha.length > 0) {
+        return sha;
       }
-    } catch (_: unknown) {
-      // Ignore
     }
 
-    // 3) Fallback to a branch attr if available, then ask Git once more.
-    const attrs = args.plugin?.protocolAttrs as Attrs;
-    const defaultBranch = attrs?.gitDefaultBranch ?? "main";
+    const defaultBranch = getDefaultBranchName(args);
     if (defaultBranch.length > 0) {
-      const resolveProc = new Deno.Command(git, {
-        args: ["rev-parse", "--verify", defaultBranch],
-        cwd: args.plugin.path,
-        stdout: "piped",
-        stderr: "piped",
-      });
-      const { stdout } = await resolveProc.output();
-      const sha = new TextDecoder().decode(stdout).trim();
-      if (sha && /^[0-9a-f]{40}$/.test(sha)) {
+      const sha = await resolveRefToSha(args.plugin.path, git, defaultBranch);
+      if (sha.length > 0) {
         return sha;
       }
     }
@@ -682,6 +564,158 @@ export class Protocol extends BaseProtocol<Params> {
       pullArgs: ["pull", "--ff", "--ff-only"],
     };
   }
+
+  #getGitInitArgs(params: Params): string[] {
+    const credentialHelper = params.enableCredentialHelper ? [] : [
+      "-c",
+      "credential.helper=",
+      "-c",
+      "core.fsmonitor=false",
+    ];
+    const sslVerify = params.enableSSLVerify ? [] : [
+      "-c",
+      "http.sslVerify=false",
+    ];
+
+    return [...credentialHelper, ...sslVerify];
+  }
+
+  #getFetchCommands(args: {
+    denops: Denops;
+    plugin: Plugin;
+    protocolParams: Params;
+  }, initArgs: string[]): Command[] {
+    const params = args.protocolParams;
+    const attrs = args.plugin.protocolAttrs as Attrs;
+
+    const commands: Command[] = [
+      {
+        command: params.commandPath,
+        args: [...initArgs, "fetch"],
+      },
+    ];
+
+    if (params.cloneDepth <= 0) {
+      commands.push({
+        command: params.commandPath,
+        args: [
+          ...initArgs,
+          "remote",
+          "set-head",
+          attrs?.gitRemote ?? params.defaultRemote,
+          "-a",
+        ],
+      });
+    }
+
+    commands.push({
+      command: params.commandPath,
+      args: [...initArgs, ...params.pullArgs],
+    });
+
+    commands.push({
+      command: params.commandPath,
+      args: [...initArgs, "submodule", "update", "--init", "--recursive"],
+    });
+
+    return commands;
+  }
+
+  #getCloneCommands(args: {
+    denops: Denops;
+    plugin: Plugin;
+    protocolOptions: ProtocolOptions;
+    protocolParams: Params;
+  }, initArgs: string[]): Command[] {
+    const params = args.protocolParams;
+    const commandArgs = [...initArgs, "clone", "--recursive"];
+
+    if (params.enablePartialClone) {
+      commandArgs.push("--filter=blob:none");
+    }
+
+    if (params.cloneDepth > 0) {
+      commandArgs.push(`--depth=${params.cloneDepth}`);
+
+      if (args.plugin.rev && args.plugin.rev.length > 0) {
+        commandArgs.push("--branch", args.plugin.rev);
+      }
+    }
+
+    commandArgs.push(this.getUrl(args));
+    commandArgs.push(args.plugin.path ?? "");
+
+    return [{
+      command: params.commandPath,
+      args: commandArgs,
+    }];
+  }
+}
+
+async function getCurrentBranch(cwd: string, gitCmd: string): Promise<string> {
+  try {
+    const proc = new Deno.Command(gitCmd, {
+      args: ["symbolic-ref", "--short", "HEAD"],
+      cwd,
+      stdout: "piped",
+      stderr: "piped",
+    });
+    const { stdout } = await proc.output();
+    const branch = new TextDecoder().decode(stdout).trim();
+    return branch.startsWith("fatal: ") ? "" : branch;
+  } catch {
+    return "";
+  }
+}
+
+async function resolveBranchToSha(
+  cwd: string,
+  gitCmd: string,
+  branch: string,
+  remote: string,
+): Promise<string> {
+  for (
+    const refType of [
+      `refs/remotes/${remote}/${branch}`,
+      `refs/heads/${branch}`,
+      branch,
+    ]
+  ) {
+    const sha = await resolveRefToSha(cwd, gitCmd, refType);
+    if (sha.length > 0) {
+      return sha;
+    }
+  }
+  return "";
+}
+
+async function resolveRefToSha(
+  cwd: string,
+  gitCmd: string,
+  ref: string,
+): Promise<string> {
+  try {
+    const proc = new Deno.Command(gitCmd, {
+      args: ["rev-parse", "--verify", ref],
+      cwd,
+      stdout: "piped",
+      stderr: "piped",
+    });
+    const { stdout } = await proc.output();
+    const sha = new TextDecoder().decode(stdout).trim();
+    return /^[0-9a-f]{40}$/.test(sha) ? sha : "";
+  } catch {
+    return "";
+  }
+}
+
+function getDefaultBranchName(args: {
+  denops: Denops;
+  plugin: Plugin;
+  protocolParams: Params;
+}): string {
+  const attrs = args.plugin.protocolAttrs as Attrs;
+  return attrs?.gitDefaultBranch ?? "main";
 }
 
 function getGitUrl(
